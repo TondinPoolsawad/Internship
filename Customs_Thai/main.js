@@ -81,7 +81,7 @@ async function main() {
 
   fs.mkdirSync(require("path").dirname(output), { recursive: true });
   fs.writeFileSync(output, csv, "utf8");
-  console.log(`\n✅ Data saved to ${output}`);
+  console.log(`\n Data saved to ${output}`);
 }
 
 main();

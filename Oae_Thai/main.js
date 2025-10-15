@@ -7,8 +7,8 @@ import path from "path";
 const BASE = "https://oae.go.th";
 const MAIN_URL = `${BASE}/home/article/475`;
 const SAVE_DIR = "./reports";
+const RECORD_PATH = "./record.json";
 
-// รายชื่อ blacklist (ไม่ใช่พืชผล)
 const blacklist = [
   "ประวัติ",
   "วิสัยทัศน์",
@@ -30,114 +30,132 @@ const blacklist = [
   "การใช้จ่าย",
   "ข่าวประชาสัมพันธ์",
   "ประกาศ",
-  "การจัดซื้อจัดจ้าง"
+  "การจัดซื้อจัดจ้าง",
 ];
 
-// 🔹 ฟังก์ชันหลัก
+function loadRecord() {
+  if (fs.existsSync(RECORD_PATH)) {
+    return JSON.parse(fs.readFileSync(RECORD_PATH, "utf-8"));
+  }
+  return {};
+}
+
+function saveRecord(record) {
+  fs.writeFileSync(RECORD_PATH, JSON.stringify(record, null, 2), "utf-8");
+}
+
 async function scrapeOAE() {
+  const record = loadRecord();
   const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
   const page = await browser.newPage();
-  console.log(`🌐 กำลังเข้าเว็บไซต์หลัก: ${MAIN_URL}`);
+  console.log(`Opening main page: ${MAIN_URL}`);
   await page.goto(MAIN_URL, { waitUntil: "networkidle2", timeout: 0 });
-
-  // ✅ รอให้ Angular โหลดลิงก์พืชทั้งหมด
   await page.waitForSelector("app-root a[href^='/home/article/']", { timeout: 20000 });
+
   const html = await page.content();
   const $ = cheerio.load(html);
-
   const plantLinks = [];
+
   $("a[href^='/home/article/']").each((i, el) => {
     const href = $(el).attr("href");
     const name = $(el).text().trim();
-
-    // ข้ามลิงก์ที่ไม่เกี่ยวข้อง
     if (!href || !name || href.includes("/home/article/475")) return;
-
     const isBlacklisted = blacklist.some((word) => name.includes(word));
-    if (isBlacklisted) {
-      console.log(`🚫 ข้ามลิงก์: ${name}`);
-      return;
-    }
-
+    if (isBlacklisted) return;
     plantLinks.push({ name, url: BASE + href });
   });
 
-  console.log(`\n🌾 พบพืชที่เกี่ยวข้องทั้งหมด ${plantLinks.length} รายการ`);
+  console.log(`\nFound ${plantLinks.length} plant categories`);
   console.table(plantLinks);
 
-  // 🔁 เข้าหน้าพืชแต่ละชนิด
   for (const { name, url } of plantLinks) {
-    console.log(`\n🔍 กำลังเข้า: ${name} (${url})`);
+    console.log(`\nVisiting: ${name} (${url})`);
     try {
-      await scrapePlantPDFs(browser, name, url);
+      await scrapePlantByYear(browser, name, url, record);
     } catch (err) {
-      console.warn(`⚠️ เกิดข้อผิดพลาดกับ ${name}: ${err.message}`);
+      console.warn(`Error in ${name}: ${err.message}`);
     }
   }
 
+  saveRecord(record);
   await browser.close();
-  console.log("\n✅ เสร็จสมบูรณ์! โหลดรายงานครบทุกพืชแล้ว");
+  console.log("\nAll reports have been downloaded and recorded successfully.");
 }
 
-// 🔹 ดึง PDF ของพืชแต่ละชนิด
-async function scrapePlantPDFs(browser, plantName, plantUrl) {
+async function scrapePlantByYear(browser, plantName, plantUrl, record) {
   const page = await browser.newPage();
   await page.goto(plantUrl, { waitUntil: "networkidle2", timeout: 0 });
 
   try {
-    await page.waitForSelector("app-root a[href$='.pdf']", { timeout: 15000 });
+    await page.waitForSelector("app-root", { timeout: 15000 });
   } catch {
-    console.warn(`⚠️ ไม่มี PDF ใน ${plantName}`);
+    console.warn(`No data found for ${plantName}`);
     await page.close();
     return;
   }
 
   const html = await page.content();
   const $ = cheerio.load(html);
+  const yearSections = $("div.section-title");
 
-  const pdfLinks = [];
-  $("a[href$='.pdf']").each((i, el) => {
-    const link = $(el).attr("href");
-    const file = decodeURIComponent(link.split("/").pop());
-    const yearMatch = file.match(/(20\d{2}|25\d{2})/);
-    const year = yearMatch ? yearMatch[0] : "unknown";
-    pdfLinks.push({
-      file,
-      url: link.startsWith("http") ? link : BASE + link,
-      year,
+  if (yearSections.length === 0) {
+    console.warn(`No yearly sections found in ${plantName}`);
+    await page.close();
+    return;
+  }
+
+  for (const el of yearSections.toArray()) {
+    const yearText = $(el).text().trim();
+    const year = yearText.match(/(25\d{2}|20\d{2})/)?.[0] || "unknown";
+    const pdfs = [];
+
+    $(el).next("ul").find("a[href$='.pdf']").each((i, a) => {
+      const title = $(a).text().trim();
+      const url = $(a).attr("href");
+      pdfs.push({ title, url: url.startsWith("http") ? url : BASE + url });
     });
-  });
 
-  console.log(`📄 พบ PDF ${pdfLinks.length} ไฟล์สำหรับ "${plantName}"`);
-  await downloadPDFs(plantName, pdfLinks);
+    if (pdfs.length > 0) {
+      console.log(`Year ${year}: ${pdfs.length} file(s)`);
+      await downloadPDFs(plantName, year, pdfs, record);
+    } else {
+      console.log(`No PDFs found for year ${year}`);
+    }
+  }
+
   await page.close();
 }
 
-// 🔹 ดาวน์โหลด PDF พร้อมสร้างโฟลเดอร์
-async function downloadPDFs(plantName, pdfs) {
-  const dir = path.join(SAVE_DIR, plantName);
+async function downloadPDFs(plantName, year, pdfs, record) {
+  const dir = path.join(SAVE_DIR, plantName, year);
   await fs.ensureDir(dir);
 
-  for (const { file, url } of pdfs) {
-    const filePath = path.join(dir, file);
-    if (fs.existsSync(filePath)) {
-      console.log(`🟢 มีไฟล์แล้ว: ${file}`);
+  if (!record[plantName]) record[plantName] = {};
+  if (!record[plantName][year]) record[plantName][year] = [];
+
+  for (const { title, url } of pdfs) {
+    const safeTitle = title.replace(/[\\/:*?"<>|]/g, "_").slice(0, 120);
+    const filePath = path.join(dir, `${safeTitle}.pdf`);
+    const alreadyRecorded = record[plantName][year].includes(safeTitle);
+    if (alreadyRecorded || fs.existsSync(filePath)) {
+      console.log(`Already downloaded: ${safeTitle}`);
       continue;
     }
 
-    console.log(`⬇️ กำลังดาวน์โหลด: ${file}`);
+    console.log(`Downloading: ${safeTitle}`);
     try {
       const res = await axios.get(url, { responseType: "arraybuffer" });
       fs.writeFileSync(filePath, res.data);
+      record[plantName][year].push(safeTitle);
+      saveRecord(record);
     } catch (err) {
-      console.error(`❌ โหลดไม่สำเร็จ: ${file} (${err.message})`);
+      console.error(`Failed to download ${safeTitle}: ${err.message}`);
     }
   }
 }
 
-// 🔹 เริ่มต้นรันโปรแกรม
 scrapeOAE();

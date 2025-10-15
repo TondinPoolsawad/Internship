@@ -1,2 +1,2 @@
-# Internship
-67 Mango Mustard Labubu Matcha Aura + 1000
+# NECTEC Internship Project
+Hello and welcome everyone to this repository!

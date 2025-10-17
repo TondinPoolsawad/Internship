@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Customs Scraper</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+  <style>
+    body{font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:20px; line-height:1.4}
+    .card{border:1px solid #ddd; border-radius:14px; padding:18px; box-shadow:0 3px 12px rgba(0,0,0,0.05);}
+    label{display:block; margin-top:10px; font-weight:600}
+    input[type="text"], input[type="month"]{width:260px; padding:8px; border-radius:8px; border:1px solid #bbb}
+    .row{display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end}
+    .btn{padding:10px 16px; border:none; border-radius:10px; cursor:pointer}
+    .primary{background:#2d6cdf; color:white}
+    .ghost{background:#f2f4f8}
+    .chips{display:flex; gap:10px; margin-top:6px}
+    .chip{display:flex; gap:8px; align-items:center; padding:6px 8px; border-radius:8px; background:#f3f3f3}
+    #log{white-space:pre-wrap; background:#0b1020; color:#e6edf3; padding:12px; border-radius:10px; height:240px; overflow:auto; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .footer{opacity:0.75; font-size:12px; margin-top:10px}
+  </style>
+</head>
+<body>
+  <h1>Customs Scraper</h1>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="hs">HS Codes (comma-separated)</label>
+        <input id="hs" type="text" placeholder="e.g., 10, 1006, 100630" />
+      </div>
+      <div>
+        <label for="start">From (YYYY-MM)</label>
+        <input id="start" type="month" />
+      </div>
+      <div>
+        <label for="end">To (YYYY-MM)</label>
+        <input id="end" type="month" />
+      </div>
+      <div>
+        <label>Type</label>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" id="type-import" /> import</label>
+          <label class="chip"><input type="checkbox" id="type-export" /> export</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="chooseOut" class="btn ghost">Choose Save As...</button>
+      <span id="outPath" class="footer">(not selected)</span>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="run" class="btn primary">Run</button>
+      <button id="clear" class="btn ghost">Clear log</button>
+    </div>
+
+    <h3 style="margin-top:18px">Log</h3>
+    <div id="log"></div>
+    <div class="footer">Tip: HS can be 2/4/8/11 digits. The app will iterate month-by-month.</div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

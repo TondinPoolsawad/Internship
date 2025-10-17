@@ -1,0 +1,15 @@
+{
+  "yearMonth": [
+    "2024-01",
+    "2024-12"
+  ],
+  "type": [
+    "import",
+    "export"
+  ],
+  "hsCodes": [
+    "10",
+    "1006"
+  ],
+  "output": "./output/customs_data.csv"
+}

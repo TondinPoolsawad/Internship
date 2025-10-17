@@ -1,0 +1,43 @@
+{
+  "name": "customs-electron-app",
+  "version": "1.0.0",
+  "description": "Thai Customs scraper GUI (Electron) - fetch monthly totals and export to CSV",
+  "main": "main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  },
+  "devDependencies": {
+    "electron": "^31.3.2",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.example.customsapp",
+    "productName": "Customs Scraper",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "scraper.js",
+      "LICENSE",
+      "README.md"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "customs-scraper-${version}-win.${ext}"
+    },
+    "mac": {
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

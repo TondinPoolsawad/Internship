@@ -183,9 +183,9 @@ def convert_value_by_unit(value: float, unit: str) -> tuple[float, str]:
     if pd.isna(value):
         return value, unit
     
-    unit = unit.lower()
-    if unit == "พันตัน":
-        return value * 1000, "ตัน"
+    unit = clean_text(unit).lower()  # Use clean_text to normalize the unit string
+    if "พันตัน" in unit:  # Check if unit contains พันตัน
+        return float(value) * 1000, "ตัน"
     return value, UNIT_MAP.get(unit, unit)
 
 # ⬇️ ทำให้ "มูลค่า" ถูกแมปเป็น value (เพื่อผ่านเงื่อนไข FINAL_ATTR_SET)
@@ -234,8 +234,11 @@ def clean_province(p: Any) -> str:
     return s
 
 def clean_unit(u: Any) -> str:
-    s = clean_text(u).lower()
-    return UNIT_MAP.get(s, s)
+    s = clean_text(u)
+    # Return the exact string "พันตัน" if it matches case-insensitively
+    if s.lower() == "พันตัน".lower():
+        return "พันตัน"
+    return s
 
 def clean_attrib(a: Any) -> str:
     s = clean_text(a)
@@ -255,6 +258,17 @@ def parse_value(v: Any) -> Optional[float]:
     except Exception:
         return None
 
+def convert_value_and_unit(value: float, unit: str) -> tuple[float, str]:
+    """Convert value based on unit and return the converted value and standardized unit."""
+    if pd.isna(value):
+        return value, unit
+    
+    # Check for พันตัน with exact match
+    if unit == "พันตัน":
+        print(f"Converting {value} พันตัน to {value * 1000} ตัน")  # Debug print
+        return value * 1000, "ตัน"
+    return value, unit
+
 def clean_slim_df(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         return pd.DataFrame(columns=TARGET_ORDER)
@@ -266,14 +280,23 @@ def clean_slim_df(df: pd.DataFrame) -> pd.DataFrame:
     out["commod"] = df["commod"].apply(clean_text)
     out["subcommod"] = df["subcommod"].apply(clean_text)
     out["atrriburte"] = df["atrriburte"].apply(clean_attrib)
+    
+    # First clean the values and units
     out["value"] = df["value"].apply(parse_value)
     out["unit"] = df["unit"].apply(clean_unit)
+    
+    # Then convert values based on units (e.g., พันตัน -> ตัน)
+    converted_values = []
+    converted_units = []
+    for val, unit in zip(out["value"], out["unit"]):
+        new_val, new_unit = convert_value_and_unit(val, unit)
+        converted_values.append(new_val)
+        converted_units.append(new_unit)
+    
+    out["value"] = converted_values
+    out["unit"] = converted_units
 
-    # Convert values based on units (e.g., พันตัน -> ตัน)
-    value_unit_pairs = [convert_value_by_unit(v, u) for v, u in zip(out["value"], out["unit"])]
-    out["value"] = [v for v, _ in value_unit_pairs]
-    out["unit"] = [u for _, u in value_unit_pairs]
-
+    # Filter and clean up
     out = out[out["atrriburte"].isin(FINAL_ATTR_SET)].copy()
     out = out.dropna(subset=["value"]).copy()
 

@@ -8,6 +8,7 @@ OAE CKAN → group=production → AUTO:
 3) Clean
 4) Keep ONLY rows where atrriburte in {"production", "value"}
 5) Save per-resource + combined (CSV & Parquet)
+6) PRUNE: keep only ALL_*.csv and ALL_*.parquet (ลบไฟล์อื่นทั้งหมดใน outdir)
 
 Usage:
   pip install requests pandas pyarrow openpyxl
@@ -121,18 +122,15 @@ def build_col_map(columns: List[str]) -> Dict[str, str]:
     mapping = {}
     for target, cands in ALIASES.items():
         hit = None
-        # exact
         for cand in cands:
             if norm(cand) in norm_cols:
                 hit = norm_cols[norm(cand)]
                 break
-        # startswith
         if not hit:
             for nc, orig in norm_cols.items():
                 if any(nc.startswith(norm(c)) for c in cands):
                     hit = orig
                     break
-        # contains (len>=3)
         if not hit:
             for nc, orig in norm_cols.items():
                 if any((norm(c) in nc and len(norm(c)) >= 3) for c in cands):
@@ -169,6 +167,7 @@ UNIT_MAP = {
     "kg": "กิโลกรัม",
     "ตัน": "ตัน",
     "t": "ตัน",
+    "พันตัน": "ตัน",  # Will be converted to ตัน with value * 1000
     "บาท": "บาท",
     "bt": "บาท",
     "baht": "บาท",
@@ -179,7 +178,17 @@ UNIT_MAP = {
     "ลบม.": "ลูกบาศก์เมตร",
 }
 
-# ⬇️ ทำให้ “มูลค่า” ถูกแมปเป็น value (เพื่อผ่านเงื่อนไข FINAL_ATTR_SET)
+def convert_value_by_unit(value: float, unit: str) -> tuple[float, str]:
+    """Convert value based on unit and return new value and unit."""
+    if pd.isna(value):
+        return value, unit
+    
+    unit = unit.lower()
+    if unit == "พันตัน":
+        return value * 1000, "ตัน"
+    return value, UNIT_MAP.get(unit, unit)
+
+# ⬇️ ทำให้ "มูลค่า" ถูกแมปเป็น value (เพื่อผ่านเงื่อนไข FINAL_ATTR_SET)
 ATTR_MAP = {
     "ผลผลิต": "production",
     "ผลผลิตต่อไร่": "yield_per_rai",
@@ -260,19 +269,35 @@ def clean_slim_df(df: pd.DataFrame) -> pd.DataFrame:
     out["value"] = df["value"].apply(parse_value)
     out["unit"] = df["unit"].apply(clean_unit)
 
-    # ⬇️ เก็บเฉพาะ production หรือ value
-    out = out[out["atrriburte"].isin(FINAL_ATTR_SET)].copy()
+    # Convert values based on units (e.g., พันตัน -> ตัน)
+    value_unit_pairs = [convert_value_by_unit(v, u) for v, u in zip(out["value"], out["unit"])]
+    out["value"] = [v for v, _ in value_unit_pairs]
+    out["unit"] = [u for _, u in value_unit_pairs]
 
-    # ลบแถวที่ value แปลงไม่ได้
+    out = out[out["atrriburte"].isin(FINAL_ATTR_SET)].copy()
     out = out.dropna(subset=["value"]).copy()
 
-    # ลบค่าว่างทั่วไป
     for c in ["province", "commod", "subcommod", "atrriburte", "unit", "id"]:
         out[c] = out[c].apply(lambda x: x if x is not None else "").astype(str).str.strip()
 
-    # ลบ duplicates โดย 8 คอลัมน์
     out = out[TARGET_ORDER].drop_duplicates().reset_index(drop=True)
     return out
+
+# ---------------------- PRUNE ----------------------
+
+def prune_outdir(outdir: str, group: str, parquet_saved: bool):
+    """ลบทุกไฟล์ใน outdir ยกเว้นไฟล์รวม ALL_{group}_SLIM_CLEAN_ATTR.(csv|parquet)"""
+    keep = {f"ALL_{group}_SLIM_CLEAN_ATTR.csv"}
+    if parquet_saved:
+        keep.add(f"ALL_{group}_SLIM_CLEAN_ATTR.parquet")
+
+    for name in os.listdir(outdir):
+        path = os.path.join(outdir, name)
+        if os.path.isfile(path) and name not in keep:
+            try:
+                os.remove(path)
+            except Exception as e:
+                print(f"⚠️ ลบไฟล์ไม่สำเร็จ: {name} → {e}")
 
 # ---------------------- Main dumping ----------------------
 
@@ -367,7 +392,7 @@ def dump_group_slim_clean(group="production", outdir="oae_prod_slim", include_no
             else:
                 print("    ⚠️ no slim rows (columns not matched or empty data)")
 
-    # save catalog
+    # save catalog (จะถูกลบทิ้งภายหลังโดย prune)
     df_catalog = pd.DataFrame(catalog_rows)
     cat_csv = os.path.join(outdir, f"catalog_{group}_{ts}.csv")
     cat_json = os.path.join(outdir, f"catalog_{group}_{ts}.json")
@@ -376,6 +401,7 @@ def dump_group_slim_clean(group="production", outdir="oae_prod_slim", include_no
     print(f"\n🗂️ Catalog saved:\n   - {cat_csv}\n   - {cat_json}")
 
     # save combined (ONLY production/value)
+    parquet_ok = False
     if combined_slim_clean:
         df_all = pd.concat(combined_slim_clean, ignore_index=True)
         df_all = df_all[TARGET_ORDER].drop_duplicates().reset_index(drop=True)
@@ -384,9 +410,12 @@ def dump_group_slim_clean(group="production", outdir="oae_prod_slim", include_no
         df_all.to_csv(all_csv, index=False, encoding="utf-8-sig", quoting=csv.QUOTE_MINIMAL)
         try:
             df_all.to_parquet(all_parquet, index=False)
+            parquet_ok = True
             print(f"📦 Combined saved:\n   - {all_csv} (rows={len(df_all)})\n   - {all_parquet} (rows={len(df_all)})")
         except Exception as e:
             print(f"📦 Combined saved:\n   - {all_csv} (rows={len(df_all)})\n   ⚠️ Parquet not saved (pyarrow required): {e}")
+        # 🔥 เก็บเฉพาะไฟล์รวม ลบที่เหลือทั้งหมดใน outdir
+        prune_outdir(outdir, group, parquet_saved=parquet_ok)
     else:
         print("\n⚠️ No combined data (maybe no rows matched production/value).")
 

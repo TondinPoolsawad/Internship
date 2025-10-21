@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 OAE CKAN → group=production → AUTO:
 1) Inspect & fetch all

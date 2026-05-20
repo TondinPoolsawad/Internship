@@ -1,6 +1,6 @@
 # GDIAS — Government Data Integration and Analysis System
 
-NECTEC Internship 2025 · Tondin Poolsawad & Nattakit Jantaraari
+NECTEC Internship 2025 · Nattakit Chantara-aree & Tondin Poolsawad
 
 A data pipeline that scrapes Thai government sources and displays DMC (Domestic Material Consumption) data on a public website.
 

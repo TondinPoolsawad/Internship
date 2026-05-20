@@ -2,6 +2,8 @@
 
 NECTEC Internship 2025 · Nattakit Chantara-aree & Tondin Poolsawad
 
+Try it here! https://nectec-internship2025.vercel.app/
+
 A data pipeline that scrapes Thai government sources and displays DMC (Domestic Material Consumption) data on a public website.
 
 ---

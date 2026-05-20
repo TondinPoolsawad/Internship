@@ -1,0 +1,5 @@
+﻿dataset,resource_name,resource_id,format,datastore_active,url
+สถิติการนำเข้าสัตว์น้ำ,สถิติการนำเข้าสัตว์น้ำ ปี2565,75bfb907-f3f6-49ba-aabe-da8764628c08,XLS,False,https://catalog.fisheries.go.th/dataset/8de0a401-2af7-4d4a-a18b-93135ff2c43f/resource/75bfb907-f3f6-49ba-aabe-da8764628c08/download/stat_import-m12-1.xls
+สถิติการส่งออกสัตว์น้ำ,สถิติการส่งออกสัตว์น้ำ ปี2567,84a14e7e-d0d4-457f-8285-2505bc2aef48,XLSX,False,https://dataset.fisheries.go.th/stat_export2567.xlsx
+สถิติการส่งออกสัตว์น้ำ,สถิติการส่งออกสัตว์น้ำ ปี2566,d476a4d6-cb31-4f18-90fa-0ed900ad32df,XLSX,False,https://dataset.fisheries.go.th/stat_export2566.xlsx
+สถิติการส่งออกสัตว์น้ำ,สถิติการส่งออกสัตว์น้ำ ปี2565,cef93df8-f897-4f89-83a8-7a9cd0d998f7,XLSX,False,https://dataset.fisheries.go.th/stat_export.xlsx

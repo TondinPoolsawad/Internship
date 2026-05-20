@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GDIAS — Government Data Integration and Analysis System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  /* ── REPLACE THESE 4 URLS ONCE SUPABASE IS SET UP ── */
+  /* format: https://<project>.supabase.co/storage/v1/object/public/csvs/<file>.csv */
+
+  :root {
+    /* URLs configured */
+    
+    
+    
+
+    --bg:        #0d0f11;
+    --surface:   #13161a;
+    --border:    #1e2329;
+    --border2:   #2a313a;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --accent:    #22d3a5;
+    --accent2:   #0ea5e9;
+
+    --customs-c:   #22d3a5;
+    --oae-c:       #f59e0b;
+    --fisheries-c: #0ea5e9;
+    --dede-c:      #a78bfa;
+
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans Thai', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .logo-block { display: flex; flex-direction: column; gap: 4px; }
+
+  .logo-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  /* ── MAIN LAYOUT ── */
+  main { padding: 32px 40px; display: flex; flex-direction: column; gap: 40px; max-width: 1400px; }
+
+  /* ── SECTION ── */
+  .source-section {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .source-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid currentColor;
+    opacity: 0.7;
+  }
+
+  .section-title h2 {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .section-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-badge .dot { width: 5px; height: 5px; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .btn-download {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 5px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .btn-download:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── TABLE WRAPPER ── */
+  .table-wrap {
+    overflow-x: auto;
+    max-height: 380px;
+    overflow-y: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  thead { position: sticky; top: 0; z-index: 1; }
+
+  thead th {
+    background: #0d1117;
+    color: var(--muted);
+    font-weight: 500;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border2);
+    white-space: nowrap;
+    letter-spacing: 0.06em;
+  }
+
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface); }
+  tbody td { padding: 9px 14px; color: var(--text); white-space: nowrap; }
+  tbody td:first-child { color: var(--muted); }
+
+  /* ── LOADING / ERROR STATES ── */
+  .state-msg {
+    padding: 40px 20px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .state-msg.error { color: #f87171; }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── FOOTER ── */
+  footer {
+    margin: 0 40px;
+    padding: 20px 0 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  footer p { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  /* ── COLOR ACCENTS PER SOURCE ── */
+  [data-source="customs"]   { --c: var(--customs-c); }
+  [data-source="oae"]       { --c: var(--oae-c); }
+  [data-source="fisheries"] { --c: var(--fisheries-c); }
+  [data-source="dede"]      { --c: var(--dede-c); }
+
+  [data-source] .source-tag { color: var(--c); border-color: var(--c); }
+  [data-source] h2 { color: var(--c); }
+  [data-source] .status-badge .dot { background: var(--c); }
+  [data-source] .btn-download:hover { border-color: var(--c); color: var(--c); }
+
+  @media (max-width: 640px) {
+    header, main, footer { padding-left: 16px; padding-right: 16px; }
+    footer { margin: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <span class="logo-label">NECTEC · NSTDA</span>
+    <h1>Government Data Integration and Analysis System</h1>
+  </div>
+  <div class="header-meta">
+    <div>DMC — Domestic Material Consumption</div>
+    <div id="last-updated">—</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── CUSTOMS ── -->
+  <section class="source-section" data-source="customs"
+    data-url="https://mzzyjtlrbbwqdxpenwne.supabase.co/storage/v1/object/public/csvs/customs.csv">
+    <div class="section-header">
+      <div class="section-title">
+        <span class="source-tag">Customs</span>
+        <h2>Thai Customs Department</h2>
+      </div>
+      <div class="section-meta">
+        <span class="status-badge"><span class="dot"></span>Live</span>
+        <a class="btn-download" href="#" download>
+          ↓ Download CSV
+        </a>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="state-msg"><span class="spinner"></span>Loading…</div>
+    </div>
+  </section>
+
+  <!-- ── OAE ── -->
+  <section class="source-section" data-source="oae"
+    data-url="https://mzzyjtlrbbwqdxpenwne.supabase.co/storage/v1/object/public/csvs/oae.csv">
+    <div class="section-header">
+      <div class="section-title">
+        <span class="source-tag">OAE</span>
+        <h2>Office of Agricultural Economics</h2>
+      </div>
+      <div class="section-meta">
+        <span class="status-badge"><span class="dot"></span>Live</span>
+        <a class="btn-download" href="#" download>
+          ↓ Download CSV
+        </a>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="state-msg"><span class="spinner"></span>Loading…</div>
+    </div>
+  </section>
+
+  <!-- ── FISHERIES ── -->
+  <section class="source-section" data-source="fisheries"
+    data-url="https://mzzyjtlrbbwqdxpenwne.supabase.co/storage/v1/object/public/csvs/fisheries.csv">
+    <div class="section-header">
+      <div class="section-title">
+        <span class="source-tag">Fisheries</span>
+        <h2>Department of Fisheries</h2>
+      </div>
+      <div class="section-meta">
+        <span class="status-badge"><span class="dot"></span>Live</span>
+        <a class="btn-download" href="#" download>
+          ↓ Download CSV
+        </a>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="state-msg"><span class="spinner"></span>Loading…</div>
+    </div>
+  </section>
+
+  <!-- ── DEDE ── -->
+  <section class="source-section" data-source="dede"
+    data-url="https://mzzyjtlrbbwqdxpenwne.supabase.co/storage/v1/object/public/csvs/dede.csv">
+    <div class="section-header">
+      <div class="section-title">
+        <span class="source-tag">DEDE</span>
+        <h2>Dept. of Alternative Energy Development</h2>
+      </div>
+      <div class="section-meta">
+        <span class="status-badge"><span class="dot"></span>Live</span>
+        <a class="btn-download" href="#" download>
+          ↓ Download CSV
+        </a>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="state-msg"><span class="spinner"></span>Loading…</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>GDIAS · NECTEC Internship 2025</p>
+  <p id="footer-time"></p>
+</footer>
+
+<script>
+  // ── CONFIG: replace YOUR_SUPABASE_URL in each section's data-url above ──
+  // Example: https://abcdefgh.supabase.co/storage/v1/object/public/csvs/customs.csv
+
+  function renderTable(data, container) {
+    if (!data.length) {
+      container.innerHTML = '<div class="state-msg">No data found.</div>';
+      return;
+    }
+    const cols = Object.keys(data[0]);
+    const thead = `<thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
+    const tbody = `<tbody>${data.map(row =>
+      `<tr>${cols.map(c => `<td>${row[c] ?? ''}</td>`).join('')}</tr>`
+    ).join('')}</tbody>`;
+    container.innerHTML = `<table>${thead}${tbody}</table>`;
+  }
+
+  async function loadSection(section) {
+    const url = section.dataset.url;
+    const wrap = section.querySelector('.table-wrap');
+    const dlBtn = section.querySelector('.btn-download');
+
+    if (!url || url.includes('YOUR_SUPABASE_URL')) {
+      wrap.innerHTML = '<div class="state-msg error">⚠ Supabase URL not configured yet.<br>Replace YOUR_SUPABASE_URL in index.html</div>';
+      return;
+    }
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const { data, errors } = Papa.parse(text, { header: true, skipEmptyLines: true });
+      if (errors.length && !data.length) throw new Error(errors[0].message);
+      renderTable(data, wrap);
+      dlBtn.href = url;
+    } catch (err) {
+      wrap.innerHTML = `<div class="state-msg error">Failed to load: ${err.message}</div>`;
+    }
+  }
+
+  function init() {
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(now);
+    document.getElementById('last-updated').textContent = `Updated ${fmt}`;
+    document.getElementById('footer-time').textContent = fmt;
+
+    document.querySelectorAll('.source-section').forEach(loadSection);
+  }
+
+  init();
+</script>
+</body>
+</html>

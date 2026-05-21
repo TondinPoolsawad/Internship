@@ -1,17 +1,20 @@
 # GDIAS — Government Data Integration and Analysis System
 
 NECTEC Internship 2025 · Nattakit Chantara-aree & Tondin Poolsawad
+<<<<<<< HEAD
 
 Get all CSV files here! https://nectec-internship2025.vercel.app/
+=======
+>>>>>>> 9148755 (remove large files, update gitignore)
 
-A data pipeline that scrapes Thai government sources and displays DMC (Domestic Material Consumption) data on a public website.
+A data pipeline that scrapes Thai government sources and displays DMC (Domestic Material Consumption) data on a public website, with a local Electron desktop app for running scrapers.
 
 ---
 
 ## How it works
 
 ```
-Scrapers (run locally) → CSV → Supabase Storage → Website (Vercel)
+Scrapers (run locally or via Electron app) → CSV → Supabase Storage → Website (Vercel)
 ```
 
 Four government sources are scraped, cleaned into CSV, uploaded to Supabase, and displayed on the website with a download button per source.
@@ -40,12 +43,54 @@ Internship/
 ├── cleandata.py                # DEDE XLSX → CSV cleaner
 ├── oae_api.py                  # OAE CKAN scraper
 ├── fisheries_api.py            # Fisheries CKAN scraper
-└── customs_scrape/             # Customs scraper (Node.js)
+├── customs_scrape.js           # Customs scraper (Node.js)
+├── config.json                 # Shared config
+├── package.json
+├── downloads/                  # Downloaded XLSX files + manifest
+├── fisheries_importexport_stat_raw/  # Raw fisheries data
+└── gdias-electron/             # Electron desktop app
+    ├── main.js                 # Electron main process
+    ├── preload.js
+    ├── renderer.js
+    ├── index.html              # App UI
+    ├── package.json
+    └── scrapers/
+        └── dede.js             # Spawns scraper.js + cleandata.py
 ```
 
 ---
 
-## Setup
+## Electron Desktop App
+
+The `gdias-electron/` folder is a standalone Electron app that provides a UI for running scrapers without using the command line.
+
+### Requirements
+
+- Node.js 18+ (system install, not Electron's bundled Node)
+- Python 3.10+
+
+### Run in development
+
+```powershell
+cd gdias-electron
+npm install
+npm start
+```
+
+### Build as `.exe`
+
+```powershell
+cd gdias-electron
+npm run build
+```
+
+Output will be in `gdias-electron/dist/`.
+
+> ⚠️ Do not push `dist/` to GitHub — it's excluded in `.gitignore`.
+
+---
+
+## Setup (CLI scripts)
 
 ### Requirements
 

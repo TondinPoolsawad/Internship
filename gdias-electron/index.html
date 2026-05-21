@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com">
+<title>GDIAS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0d0f11;
+    --surface:  #13161a;
+    --surface2: #1a1e24;
+    --border:   #1e2329;
+    --border2:  #2a313a;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --accent:   #22d3a5;
+
+    --customs-c:   #22d3a5;
+    --oae-c:       #f59e0b;
+    --fisheries-c: #0ea5e9;
+    --dede-c:      #a78bfa;
+
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans Thai', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-app-region: no-drag;
+  }
+
+  /* ── TITLEBAR ── */
+  .titlebar {
+    height: 38px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    -webkit-app-region: drag;
+    flex-shrink: 0;
+  }
+
+  .titlebar-logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    text-transform: uppercase;
+    -webkit-app-region: no-drag;
+  }
+
+  .titlebar-name {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    padding: 0 16px;
+    gap: 2px;
+  }
+
+  .tab {
+    padding: 10px 18px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--c); border-bottom-color: var(--c); }
+
+  .tab[data-tab="customs"]   { --c: var(--customs-c); }
+  .tab[data-tab="oae"]       { --c: var(--oae-c); }
+  .tab[data-tab="fisheries"] { --c: var(--fisheries-c); }
+  .tab[data-tab="dede"]      { --c: var(--dede-c); }
+
+  .tab-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--c);
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+  .tab.active .tab-dot { opacity: 1; }
+
+  /* ── PANELS ── */
+  .panels { flex: 1; overflow: hidden; position: relative; }
+
+  .panel {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+  }
+  .panel.active { display: flex; }
+
+  /* ── PANEL HEADER ── */
+  .panel-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+
+  .panel-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  [data-panel="customs"]   .panel-title { color: var(--customs-c); }
+  [data-panel="oae"]       .panel-title { color: var(--oae-c); }
+  [data-panel="fisheries"] .panel-title { color: var(--fisheries-c); }
+  [data-panel="dede"]      .panel-title { color: var(--dede-c); }
+
+  /* ── BODY SPLIT ── */
+  .panel-body {
+    flex: 1;
+    display: flex;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    width: 280px;
+    flex-shrink: 0;
+    padding: 20px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+
+  label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  input[type="text"],
+  input[type="month"],
+  input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  input:focus { border-color: var(--accent); }
+
+  .checkbox-group { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+  }
+
+  .output-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .output-path {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    word-break: break-all;
+    flex: 1;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0d0f11;
+    font-weight: 500;
+  }
+
+  .btn-primary:hover { background: #1ebd95; border-color: #1ebd95; color: #0d0f11; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-sm { padding: 5px 10px; font-size: 10px; }
+
+  .actions { display: flex; gap: 8px; margin-top: 4px; }
+
+  /* ── LOG ── */
+  .log-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .log-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .log-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .log-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.8;
+    color: #94a3b8;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .log-output .ok   { color: var(--accent); }
+  .log-output .warn { color: #f59e0b; }
+  .log-output .err  { color: #f87171; }
+  .log-output .info { color: var(--muted); }
+
+  /* ── STATUS BAR ── */
+  .statusbar {
+    height: 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .status-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+
+  .status-dot.running {
+    background: var(--accent);
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  /* ── HINT ── */
+  .hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- TITLEBAR -->
+<div class="titlebar">
+  <span class="titlebar-logo">GDIAS</span>
+  <span class="titlebar-name">Government Data Integration and Analysis System · NECTEC</span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" data-tab="customs">
+    <span class="tab-dot"></span>Customs
+  </div>
+  <div class="tab" data-tab="oae">
+    <span class="tab-dot"></span>OAE
+  </div>
+  <div class="tab" data-tab="fisheries">
+    <span class="tab-dot"></span>Fisheries
+  </div>
+  <div class="tab" data-tab="dede">
+    <span class="tab-dot"></span>DEDE
+  </div>
+</div>
+
+<!-- PANELS -->
+<div class="panels">
+
+  <!-- ── CUSTOMS ── -->
+  <div class="panel active" data-panel="customs">
+    <div class="panel-header">
+      <div class="panel-title">Thai Customs Department</div>
+      <div class="panel-sub">กรมศุลกากร · POST scrape · customs.go.th</div>
+    </div>
+    <div class="panel-body">
+      <div class="controls">
+
+        <div class="field">
+          <label>HS Codes (comma-separated)</label>
+          <input type="text" id="c-hs" placeholder="e.g. 10, 1006, 1701" value="10, 1006, 1701">
+          <span class="hint">2/4/8/11 digit codes</span>
+        </div>
+
+        <div class="field">
+          <label>From (YYYY-MM)</label>
+          <input type="month" id="c-start" value="2020-01">
+        </div>
+
+        <div class="field">
+          <label>To (YYYY-MM)</label>
+          <input type="month" id="c-end" value="2024-12">
+        </div>
+
+        <div class="field">
+          <label>Type</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="c-import" checked> import
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="c-export" checked> export
+            </label>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Output File</label>
+          <div class="output-row">
+            <span class="output-path" id="c-outpath">not selected</span>
+            <button class="btn btn-sm" id="c-choose">Browse</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="c-run">▶ Run</button>
+          <button class="btn btn-sm" id="c-clear">Clear log</button>
+        </div>
+
+      </div>
+      <div class="log-pane">
+        <div class="log-header">
+          <span class="log-label">Log</span>
+          <span class="status-item">
+            <span class="status-dot" id="c-dot"></span>
+            <span id="c-status">Idle</span>
+          </span>
+        </div>
+        <div class="log-output" id="c-log">Ready. Fill in the fields and click Run.\n</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── OAE ── -->
+  <div class="panel" data-panel="oae">
+    <div class="panel-header">
+      <div class="panel-title">Office of Agricultural Economics</div>
+      <div class="panel-sub">สำนักงานเศรษฐกิจการเกษตร · CKAN API · oae.go.th</div>
+    </div>
+    <div class="panel-body">
+      <div class="controls">
+
+        <div class="field">
+          <label>Commodities</label>
+          <span class="hint">All 13 commodities are fetched automatically:<br>ข้าว, มันสำปะหลัง, ยางพารา, ปาล์มน้ำมัน, ข้าวโพด, ทุเรียน, ลำไย, ลิ้นจี่, ลองกอง, เงาะ, มังคุด, สับปะรด, ข้าวหอมมะลิ</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Output File</label>
+          <div class="output-row">
+            <span class="output-path" id="o-outpath">not selected</span>
+            <button class="btn btn-sm" id="o-choose">Browse</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="o-run" style="--accent:#f59e0b; background:var(--accent); border-color:var(--accent);">▶ Run</button>
+          <button class="btn btn-sm" id="o-clear">Clear log</button>
+        </div>
+
+      </div>
+      <div class="log-pane">
+        <div class="log-header">
+          <span class="log-label">Log</span>
+          <span class="status-item">
+            <span class="status-dot" id="o-dot"></span>
+            <span id="o-status">Idle</span>
+          </span>
+        </div>
+        <div class="log-output" id="o-log">Ready. Click Run to fetch all OAE production data.\n</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FISHERIES ── -->
+  <div class="panel" data-panel="fisheries">
+    <div class="panel-header">
+      <div class="panel-title">Department of Fisheries</div>
+      <div class="panel-sub">กรมประมง · CKAN API · fisheries.go.th</div>
+    </div>
+    <div class="panel-body">
+      <div class="controls">
+
+        <div class="field">
+          <label>Data</label>
+          <span class="hint">Fetches all สถิติ datasets from the Fisheries CKAN, covering import/export statistics by fish species and country.</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Output File</label>
+          <div class="output-row">
+            <span class="output-path" id="f-outpath">not selected</span>
+            <button class="btn btn-sm" id="f-choose">Browse</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="f-run" style="background:#0ea5e9; border-color:#0ea5e9;">▶ Run</button>
+          <button class="btn btn-sm" id="f-clear">Clear log</button>
+        </div>
+
+      </div>
+      <div class="log-pane">
+        <div class="log-header">
+          <span class="log-label">Log</span>
+          <span class="status-item">
+            <span class="status-dot" id="f-dot"></span>
+            <span id="f-status">Idle</span>
+          </span>
+        </div>
+        <div class="log-output" id="f-log">Ready. Click Run to fetch Fisheries statistics.\n</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DEDE ── -->
+  <div class="panel" data-panel="dede">
+    <div class="panel-header">
+      <div class="panel-title">Dept. of Alternative Energy Development</div>
+      <div class="panel-sub">กรมพัฒนาพลังงานทดแทนและอนุรักษ์พลังงาน · Puppeteer + XLSX/PDF · dede.go.th</div>
+    </div>
+    <div class="panel-body">
+      <div class="controls">
+
+        <div class="field">
+          <label>Year Range</label>
+          <div style="display:flex; gap:8px;">
+            <input type="number" id="d-start" placeholder="From" value="2015" min="2010" max="2030" style="flex:1">
+            <input type="number" id="d-end" placeholder="To" value="2024" min="2010" max="2030" style="flex:1">
+          </div>
+          <span class="hint">Downloads XLSX (2015–2024) and PDF (2025+) from dede.go.th, then extracts energy balance data.</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Output File</label>
+          <div class="output-row">
+            <span class="output-path" id="d-outpath">not selected</span>
+            <button class="btn btn-sm" id="d-choose">Browse</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="d-run" style="background:#a78bfa; border-color:#a78bfa; color:#0d0f11;">▶ Run</button>
+          <button class="btn btn-sm" id="d-clear">Clear log</button>
+        </div>
+
+      </div>
+      <div class="log-pane">
+        <div class="log-header">
+          <span class="log-label">Log</span>
+          <span class="status-item">
+            <span class="status-dot" id="d-dot"></span>
+            <span id="d-status">Idle</span>
+          </span>
+        </div>
+        <div class="log-output" id="d-log">Ready. Click Run to download and parse DEDE energy balance data.\n</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- STATUS BAR -->
+<div class="statusbar">
+  <span class="status-item">
+    <span class="status-dot" style="background:var(--accent)"></span>
+    GDIAS v1.0
+  </span>
+  <span class="status-item" id="sb-time"></span>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>
